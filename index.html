@@ -32,13 +32,13 @@ th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}.b
 <script>
 const names=["A","自分","C","D"],defaults=[38000,27000,25000,10000],chips=[2,-1,1,-2],uma=[30,0,-10,-20];
 const RETURN_POINT=30000,TOTAL_SCORE=100000;
-document.getElementById("inputs").innerHTML=names.map((n,i)=>`<div class="grid" style="margin-top:8px"><label>${n}</label><input id="p${i}" type="number" value="${defaults[i]}" step="100" inputmode="numeric"><input id="c${i}" type="number" value="${chips[i]}" step="1" inputmode="numeric"></div>`).join("");
+document.getElementById("inputs").innerHTML=names.map((n,i)=>`<div class="grid" style="margin-top:8px"><label>${n}</label><input id="p${i}" type="text" value="${defaults[i]}" inputmode="decimal" autocomplete="off"><input id="c${i}" type="text" value="${chips[i]}" inputmode="decimal" autocomplete="off"></div>`).join("");
 function ceil100(n){return Math.ceil(n/100)*100}
 function showError(s){document.getElementById("result").innerHTML=`<div class="errorBox">${s}</div>`}
 function calculate(){
  const rawP=names.map((_,i)=>{const v=document.getElementById("p"+i).value;return v===""?NaN:Number(v)});
  const c=names.map((_,i)=>{const v=document.getElementById("c"+i).value;return v===""?0:Number(v)});
- if(rawP.some(x=>!Number.isFinite(x)||x<0)){showError("⚠ 点数を正しく入力してください。");return}
+ if(rawP.some(x=>!Number.isFinite(x))){showError("⚠ 点数を正しく入力してください。");return}
  if(c.some(x=>!Number.isFinite(x))){showError("⚠ チップを正しく入力してください。");return}
  const scoreSum=rawP.reduce((a,b)=>a+b,0),chipSum=c.reduce((a,b)=>a+b,0);
  if(scoreSum!==TOTAL_SCORE){showError(`⚠ 点数合計が合いません<br>現在：${scoreSum.toLocaleString()}点<br>正しい合計：100,000点<br><span style="font-weight:600">入力した実際の点数を確認してください。</span>`);return}
