@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>麻雀収支アプリ v3</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#222}
+main{max-width:720px;margin:auto;padding:18px}
+.card{background:#fff;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 2px 10px #0001}
+h1{font-size:22px;margin:0 0 4px}.muted{color:#666;font-size:14px}
+h2{font-size:19px;margin:0 0 12px}
+button{padding:12px 16px;border:0;border-radius:10px;background:#222;color:#fff;font-size:16px;font-weight:600}
+button.light{background:#e8e8e8;color:#222}
+input,select{width:100%;padding:11px;border:1px solid #ccc;border-radius:10px;font-size:16px}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.player-row{display:flex;gap:8px;margin:8px 0}
+.player-row input{flex:1}
+.player-row button{background:#e8e8e8;color:#222;padding:8px 12px}
+.tables{display:grid;gap:12px}
+.table-card{border:1px solid #ddd;border-radius:14px;padding:14px}
+.table-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.badge{font-size:13px;background:#eee;border-radius:20px;padding:5px 9px}
+.seat{display:grid;grid-template-columns:1fr 80px;gap:8px;margin:7px 0;align-items:center}
+.status{margin-top:12px;padding:12px;border-radius:10px;background:#f7f7f7}
+.ok{color:#087a28;font-weight:600}
+.error{color:#c62828;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+<div class="card">
+<h1>🀄 麻雀収支アプリ v3</h1>
+<div class="muted">セッション・3卓管理テスト版</div>
+</div>
+
+<div class="card">
+<h2>① 参加者</h2>
+<div id="players"></div>
+<div class="actions">
+<button onclick="addPlayer()">＋参加者を追加</button>
+</div>
+<div class="muted" style="margin-top:10px">10〜15人以上でも登録できます。</div>
+</div>
+
+<div class="card">
+<h2>② 卓を作る</h2>
+<div class="tables" id="tables"></div>
+<div class="actions">
+<button onclick="saveTables()">卓を保存</button>
+<button class="light" onclick="resetAll()">リセット</button>
+</div>
+<div id="status"></div>
+</div>
+</main>
+
+<script>
+let players=[
+ {id:1,name:"自分"},
+ {id:2,name:"A"},
+ {id:3,name:"B"},
+ {id:4,name:"C"},
+ {id:5,name:"D"},
+ {id:6,name:"E"},
+ {id:7,name:"F"},
+ {id:8,name:"G"},
+ {id:9,name:"H"},
+ {id:10,name:"I"},
+ {id:11,name:"J"}
+];
+
+let tables=[
+ {name:"卓1",mode:4,players:[1,2,3,4]},
+ {name:"卓2",mode:4,players:[5,6,7,8]},
+ {name:"卓3",mode:3,players:[9,10,11]}
+];
+
+function renderPlayers(){
+ const el=document.getElementById("players");
+ el.innerHTML=players.map((p,i)=>`
+ <div class="player-row">
+   <input value="${escapeHtml(p.name)}" onchange="renamePlayer(${p.id},this.value)" placeholder="名前">
+   <button onclick="removePlayer(${p.id})">削除</button>
+ </div>`).join("");
+ renderTables();
+}
+
+function renderTables(){
+ const el=document.getElementById("tables");
+ el.innerHTML=tables.map((t,ti)=>{
+   const seats=t.mode===4?4:3;
+   let html=`<div class="table-card">
+   <div class="table-title"><b>${t.name}</b><span class="badge">${t.mode}麻雀</span></div>
+   <select onchange="changeMode(${ti},this.value)">
+     <option value="4" ${t.mode===4?"selected":""}>4麻</option>
+     <option value="3" ${t.mode===3?"selected":""}>3麻</option>
+   </select>`;
+   for(let s=0;s<seats;s++){
+     html+=`<div class="seat"><span>席${s+1}</span>
+     <select onchange="changeSeat(${ti},${s},this.value)">
+       <option value="">-- 選択 --</option>
+       ${players.map(p=>`<option value="${p.id}" ${t.players[s]===p.id?"selected":""}>${escapeHtml(p.name)}</option>`).join("")}
+     </select></div>`;
+   }
+   html+=`</div>`;
+   return html;
+ }).join("");
+}
+
+function escapeHtml(s){
+ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+}
+
+function renamePlayer(id,name){
+ const p=players.find(x=>x.id===id);
+ if(p)p.name=name.trim()||"名無し";
+ renderPlayers();
+}
+
+function addPlayer(){
+ const id=players.length?Math.max(...players.map(p=>p.id))+1:1;
+ players.push({id,name:"新しい参加者"});
+ renderPlayers();
+}
+
+function removePlayer(id){
+ if(players.length<=3){
+   showStatus("参加者は最低3人必要です。",true); return;
+ }
+ players=players.filter(p=>p.id!==id);
+ tables.forEach(t=>t.players=t.players.map(x=>x===id?"":x));
+ renderPlayers();
+}
+
+function changeMode(ti,value){
+ const mode=Number(value);
+ tables[ti].mode=mode;
+ const seats=mode===4?4:3;
+ tables[ti].players=tables[ti].players.slice(0,seats);
+ while(tables[ti].players.length<seats)tables[ti].players.push("");
+ renderTables();
+}
+
+function changeSeat(ti,si,value){
+ tables[ti].players[si]=value?Number(value):"";
+}
+
+function saveTables(){
+ const used={};
+ for(const t of tables){
+   const required=t.mode===4?4:3;
+   if(t.players.length!==required || t.players.some(x=>!x)){
+     showStatus(`${t.name}の人数が足りません。${required}人を選択してください。`,true);
+     return;
+   }
+   for(const id of t.players){
+     if(used[id]){
+       const p=players.find(x=>x.id===id);
+       showStatus(`${p?p.name:"参加者"}が複数の卓に入っています。`,true);
+       return;
+     }
+     used[id]=true;
+   }
+ }
+ localStorage.setItem("mahjong_v3_players",JSON.stringify(players));
+ localStorage.setItem("mahjong_v3_tables",JSON.stringify(tables));
+ showStatus("✓ 3卓の設定を保存しました。次の局でもこの卓配置を使えます。",false);
+}
+
+function showStatus(msg,isError){
+ document.getElementById("status").innerHTML=`<div class="${isError?"error":"status"}">${msg}</div>`;
+}
+
+function resetAll(){
+ if(!confirm("初期状態に戻しますか？"))return;
+ localStorage.removeItem("mahjong_v3_players");
+ localStorage.removeItem("mahjong_v3_tables");
+ location.reload();
+}
+
+function load(){
+ try{
+  const p=JSON.parse(localStorage.getItem("mahjong_v3_players"));
+  const t=JSON.parse(localStorage.getItem("mahjong_v3_tables"));
+  if(Array.isArray(p)&&p.length)players=p;
+  if(Array.isArray(t)&&t.length)tables=t;
+ }catch(e){}
+ renderPlayers();
+}
+load();
+</script>
+</body>
+</html>
