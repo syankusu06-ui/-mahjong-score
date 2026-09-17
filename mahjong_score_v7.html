@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>麻雀収支アプリ v7 Firebase</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#222}
+main{max-width:760px;margin:auto;padding:14px}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 10px #0001}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:19px;margin:0 0 12px}h3{margin:8px 0}
+.muted{color:#666;font-size:13px}
+button,select,input{font-size:16px}
+button{padding:12px 15px;border:0;border-radius:10px;background:#222;color:#fff;font-weight:700}
+button.light{background:#e8e8e8;color:#222}
+button.confirm{background:#087a28}
+button.warn{background:#a56a00}
+button:disabled{opacity:.45}
+.tabs{display:flex;gap:7px;margin-bottom:12px}.tab{flex:1}
+select,input{width:100%;padding:11px;border:1px solid #ccc;border-radius:10px;background:#fff}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.error{background:#fff0f0;border:1px solid #e0a0a0;border-radius:12px;padding:12px;color:#9b0000;font-weight:700;margin-top:10px}
+.ok{background:#eef9f0;border-radius:10px;padding:11px;color:#087a28;font-weight:700;margin-top:10px}
+.warning{background:#fff8df;border:1px solid #e3c76b;border-radius:10px;padding:11px;margin:10px 0;font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.membergrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.member{display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #ddd;border-radius:10px}
+.member input{width:auto}
+.tablecard{border:1px solid #ddd;border-radius:12px;padding:12px;margin:10px 0}
+.seatgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.scoreRow{display:grid;grid-template-columns:minmax(70px,1fr) minmax(95px,1.2fr) minmax(75px,.9fr);gap:7px;align-items:center;margin:8px 0}.scoreHeader{display:grid;grid-template-columns:minmax(70px,1fr) minmax(95px,1.2fr) minmax(75px,.9fr);gap:7px;align-items:center;color:#666;font-size:12px;margin-top:10px}.historyDateSelect{margin:10px 0 14px}.groupTitle{font-size:16px;font-weight:800;margin:12px 0 8px}
+.seatgrid label{font-size:12px;color:#666}
+.result table,.historytable{width:100%;border-collapse:collapse}
+.result th,.result td,.historytable th,.historytable td{padding:7px 4px;border-bottom:1px solid #ddd;text-align:right}
+.result th:first-child,.result td:first-child,.result th:nth-child(2),.result td:nth-child(2),
+.historytable th:first-child,.historytable td:first-child,.historytable th:nth-child(2),.historytable td:nth-child(2){text-align:left}
+.big{font-size:23px;font-weight:800}.plus{color:#087a28}.minus{color:#c62828}
+.calcscore{font-size:11px;color:#666;margin-top:2px}
+.totalrow{display:grid;grid-template-columns:1.2fr .9fr .8fr 1fr;gap:5px;padding:8px 0;border-bottom:1px solid #ddd}
+.smallbtn{padding:8px 10px;font-size:13px}
+.dayhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{display:inline-block;padding:3px 7px;border-radius:999px;background:#eee;font-size:12px;font-weight:700}
+.tobi{font-weight:800}
+
+.historyScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+.historyMatrix{border-collapse:collapse;width:max-content;min-width:100%;font-size:14px}
+.historyMatrix th,.historyMatrix td{border-bottom:1px solid #ddd;padding:9px 10px;text-align:center;vertical-align:middle;white-space:nowrap}
+.historyMatrix thead th,.historyMatrix tr:first-child th{background:#eee7f8}
+.historyMatrix .historyRound{position:sticky;left:0;background:#eee7f8;z-index:1;min-width:54px}
+.historyMatrix .historyEmpty{color:#999;background:#f7f7f7}
+.historyMatrix .historySub{font-size:12px;margin-top:4px;color:#555}
+.historyMatrix .historyTotalLine th,.historyMatrix .historyTotalLine td{border-top:2px solid #222;font-weight:600}
+.tobiMark{font-size:12px;margin-left:3px}
+.historyEditList{margin-top:8px}.firebaseBox{background:#eef5ff;border:1px solid #b9d2ff;border-radius:12px;padding:12px;margin-top:12px}.roomCode{font-size:22px;font-weight:800;letter-spacing:2px}.online{color:#087a28;font-weight:800}
+</style>
+</head>
+<body>
+<main>
+<div id="setupPage">
+  <div class="card">
+    <h1>🀄 麻雀収支アプリ v7</h1>
+    <div class="muted">日付 → メンバー選択 → 1局入力 → メンバー入れ替え</div>
+    <div style="margin-top:14px">
+      <label><b>対局日</b></label>
+      <input id="sessionDate" type="date">
+      <div class="muted" style="margin-top:5px">日をまたいで打っても、この日付の1日分として記録します。</div>
+    </div>
+  </div>
+  <div class="card firebaseBox">
+    <h2>🔗 ルーム</h2>
+    <div class="muted">同じルームコードを入れたスマホ同士で、メンバー・卓・局履歴をリアルタイム共有します。</div>
+    <div class="actions"><button onclick="createRoom()">新しいルームを作る</button></div>
+    <div style="margin-top:10px"><label><b>ルームコード</b></label><input id="roomCodeInput" type="text" inputmode="text" autocomplete="off" placeholder="例：A7K2Q9" style="text-transform:uppercase"></div>
+    <div class="actions"><button class="light" onclick="joinRoom()">このコードで参加</button></div>
+    <div id="firebaseStatus" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2>① メンバー選択</h2>
+    <div class="muted" style="margin-bottom:9px">今日参加するメンバーを選択してください。</div>
+    <div id="memberList" class="membergrid"></div>
+    <div class="actions">
+      <button onclick="startSession()">このメンバーで対局開始</button>
+      <button class="light" onclick="selectAllMembers()">全員選択</button>
+      <button class="light" onclick="clearMembers()">全員解除</button>
+      <button class="light" onclick="addMember()">＋ 新規メンバー追加</button>
+    </div>
+    <div id="setupError"></div>
+  </div>
+</div>
+
+<div id="appPage" style="display:none">
+  <div class="card">
+    <div class="dayhead">
+      <div><h1>🀄 麻雀収支アプリ v7</h1><div class="muted" id="sessionLabel"></div></div>
+      <button class="light smallbtn" onclick="backToSetup()">日付・メンバー変更</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab" id="handTab" onclick="showPage('hand')">1局入力</button>
+    <button class="tab light" id="totalTab" onclick="showPage('total')">累計</button>
+    <button class="tab light" id="historyTab" onclick="showPage('history')">局履歴</button>
+  </div>
+
+  <section id="handPage">
+    <div class="card">
+      <h2>② 卓・メンバー</h2>
+      <div id="tableArea"></div>
+      <div class="muted">次の局に進む前に、ここでメンバーを入れ替えられます。</div>
+      <div style="margin-top:10px"><button class="light smallbtn" onclick="addMember()">＋ 新規メンバー追加</button></div>
+    </div>
+    <div class="card">
+      <h2>③ 1局入力</h2>
+      <label class="muted">入力する卓</label>
+      <select id="tableSelect" onchange="renderHand()"></select>
+      <div id="tableInfo" class="muted" style="margin:7px 0"></div>
+      <div id="inputs"></div>
+      <div class="actions">
+        <button id="calcButton" onclick="calc()">計算する</button>
+        <button class="light" onclick="renderHand()">入力リセット</button>
+      </div>
+      <div class="muted" style="margin-top:9px">
+        点数は1,000点単位で切り上げて計算。26,500点→27,000点。<br>
+        点数はマイナス入力OK。0点はトビではなく、マイナスになったらトビ。<br>
+        チップは -2 / +2 のように直接入力。1pt=50円、1枚=250円。
+      </div>
+      <div id="error"></div>
+    </div>
+    <div id="result"></div>
+  </section>
+
+  <section id="totalPage" style="display:none">
+    <div class="card">
+      <h2>今日の累計</h2>
+      <div class="muted" id="dailyDateLabel"></div>
+      <div class="totalrow"><b>名前</b><b>ポイント</b><b>チップ</b><b>収支</b></div>
+      <div id="dailyTotals"></div>
+    </div>
+    <div class="card">
+      <h2>トータル累計</h2>
+      <div class="muted">保存されている全対局の累計</div>
+      <div class="totalrow"><b>名前</b><b>ポイント</b><b>チップ</b><b>収支</b></div>
+      <div id="totals"></div>
+      <div class="actions"><button class="light" onclick="resetTotals()">トータル累計をリセット</button></div>
+    </div>
+  </section>
+
+  <section id="historyPage" style="display:none">
+    <div class="card">
+      <h2>局履歴</h2>
+      <div class="muted">まず日付を選択してください。選択した日の1局ごとの履歴と日付トータルを表示します。</div>
+      <select id="historyDateSelect" class="historyDateSelect" onchange="renderHistory()"></select>
+      <div id="history"></div>
+      <div class="actions"><button class="light" onclick="resetHistory()">局履歴をリセット</button></div>
+    </div>
+  </section>
+</div>
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+const firebaseConfig={apiKey:"AIzaSyCVHS8hMzWimVCgHO5iCw5KC77hes3Ve9s",authDomain:"marjanscore.firebaseapp.com",databaseURL:"https://marjanscore-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"marjanscore",storageBucket:"marjanscore.firebasestorage.app",messagingSenderId:"18957066916",appId:"1:18957066916:web:27c735127c530eff033c31"};
+const firebaseApp=initializeApp(firebaseConfig),db=getDatabase(firebaseApp);
+let roomCode="",roomListening=false,applyingRemote=false;
+function roomRef(path=""){return ref(db,`rooms/${roomCode}${path?"/"+path:""}`)}
+function cleanRoomCode(v){return String(v||"").trim().toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12)}
+function setFirebaseStatus(msg,ok=false){const e=document.getElementById("firebaseStatus");if(e)e.innerHTML=ok?`<span class="online">● ${msg}</span>`:msg}
+function savePlayersCloud(){if(roomCode&&!applyingRemote)set(roomRef("players"),players)}
+function saveTablesCloud(){if(roomCode&&!applyingRemote)set(roomRef("tables"),tables)}
+function saveSessionDateCloud(){if(roomCode&&!applyingRemote)set(roomRef("sessionDate"),sessionDate)}
+function listenRoom(){
+ if(!roomCode||roomListening)return; roomListening=true; setFirebaseStatus(`接続中：${roomCode}`,true);
+ onValue(roomRef("players"),snap=>{if(!snap.exists())return;applyingRemote=true;players=snap.val()||[];selectedMembers=selectedMembers.filter(id=>players.some(p=>Number(p.id)===Number(id)));if(!started)renderMemberList();applyingRemote=false});
+ onValue(roomRef("tables"),snap=>{if(!snap.exists())return;applyingRemote=true;tables=snap.val()||clone(DEF_T);if(started){renderTables();renderSelect();renderHand()}applyingRemote=false});
+ onValue(roomRef("history"),snap=>{applyingRemote=true;const v=snap.val()||{};history=Object.entries(v).map(([key,h])=>({...h,id:key}));ensureTotals();if(started){renderDailyTotals();renderTotals();renderHistory()}applyingRemote=false});
+ onValue(roomRef("sessionDate"),snap=>{if(!snap.exists())return;applyingRemote=true;sessionDate=String(snap.val());sessionDateInput.value=sessionDate;if(started)sessionLabel.textContent=`対局日：${sessionDate}｜参加 ${selectedMembers.length}人`;applyingRemote=false});
+}
+async function createRoom(){roomCode=Math.random().toString(36).slice(2,8).toUpperCase();document.getElementById("roomCodeInput").value=roomCode;roomListening=false;await set(roomRef("players"),players);await set(roomRef("tables"),tables);const seed={};history.forEach(h=>{const key="local_"+String(h.id||Date.now())+"_"+Math.random().toString(36).slice(2,7);const copy=clone(h);delete copy.id;seed[key]=copy});await set(roomRef("history"),seed);await set(roomRef("sessionDate"),sessionDateInput.value||sessionDate);listenRoom();setFirebaseStatus(`新しいルームを作成しました：${roomCode}`,true)}
+async function joinRoom(){const code=cleanRoomCode(document.getElementById("roomCodeInput").value);if(code.length<4){setFirebaseStatus("4文字以上のルームコードを入力してください。");return}roomCode=code;roomListening=false;listenRoom();setFirebaseStatus(`ルームに参加しました：${code}`,true)}
+window.createRoom=createRoom;window.joinRoom=joinRoom;
+const DEF_P=[
+ {id:1,name:"自分"},{id:2,name:"A"},{id:3,name:"B"},{id:4,name:"C"},
+ {id:5,name:"D"},{id:6,name:"E"},{id:7,name:"F"},{id:8,name:"G"},
+ {id:9,name:"H"},{id:10,name:"I"},{id:11,name:"J"}
+];
+const DEF_T=[
+ {name:"卓1",mode:4,players:[1,2,3,4]},
+ {name:"卓2",mode:4,players:[5,6,7,8]},
+ {name:"卓3",mode:3,players:[9,10,11]}
+];
+function clone(x){return JSON.parse(JSON.stringify(x))}
+function load(k,d){try{return JSON.parse(localStorage.getItem(k))||clone(d)}catch(e){return clone(d)}}
+let players=load("mahjong_v3_players",DEF_P);
+let tables=load("mahjong_v3_tables",DEF_T);
+let history=load("mahjong_v5_history",[]);
+let totals=[];
+let pending=null;
+let sessionDate=localStorage.getItem("mahjong_v5_session_date")||new Date().toISOString().slice(0,10);
+let selectedMembers=load("mahjong_v6_selected_members",players.map(p=>p.id));
+let started=false;
+
+function P(id){return players.find(x=>x.id===id)}
+function Y(t){return t.points*50+t.chips*250}
+function signed(v){
+ v=String(v).trim().replace(/[＋]/g,"+").replace(/[－−]/g,"-");
+ if(v==="")return 0;
+ if(!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(v))return NaN;
+ return Number(v);
+}
+function ensureTotals(){
+ const m={};
+ history.forEach(h=>h.rows.forEach(x=>{
+   if(!m[x.id])m[x.id]={id:x.id,points:0,chips:0,hands:0};
+   m[x.id].points+=Number(x.pt)||0;
+   m[x.id].chips+=Number(x.chip)||0;
+   m[x.id].hands++;
+ }));
+ players.forEach(p=>{if(!m[p.id])m[p.id]={id:p.id,points:0,chips:0,hands:0}});
+ totals=Object.values(m);
+ localStorage.setItem("mahjong_v4_totals",JSON.stringify(totals));
+}
+function showPage(x){
+ handPage.style.display=x==="hand"?"block":"none";
+ totalPage.style.display=x==="total"?"block":"none";
+ historyPage.style.display=x==="history"?"block":"none";
+ handTab.className=x==="hand"?"tab":"tab light";
+ totalTab.className=x==="total"?"tab":"tab light";
+ historyTab.className=x==="history"?"tab":"tab light";
+ if(x==="total"){renderDailyTotals();renderTotals()}
+ if(x==="history")renderHistory();
+}
+function renderMemberList(){
+ memberList.innerHTML=players.map(p=>`
+ <label class="member"><input type="checkbox" data-mid="${p.id}" ${selectedMembers.includes(p.id)?"checked":""}>${p.name}</label>`).join("");
+}
+function readSelectedMembers(){
+ selectedMembers=[...document.querySelectorAll("[data-mid]:checked")].map(x=>Number(x.dataset.mid));
+ localStorage.setItem("mahjong_v6_selected_members",JSON.stringify(selectedMembers));
+}
+function selectAllMembers(){players.forEach(()=>{});selectedMembers=players.map(p=>p.id);renderMemberList()}
+function clearMembers(){selectedMembers=[];renderMemberList()}
+function savePlayers(){
+ localStorage.setItem("mahjong_v3_players",JSON.stringify(players));
+}
+function addMember(){
+ const name=prompt("新しく参加するメンバーの名前を入力してください");
+ if(name===null)return;
+ const clean=name.trim();
+ if(!clean){alert("名前を入力してください。");return}
+ if(players.some(p=>p.name===clean)){alert("同じ名前のメンバーがすでに登録されています。");return}
+ const id=players.length?Math.max(...players.map(p=>Number(p.id)||0))+1:1;
+ players.push({id,name:clean});
+ selectedMembers.push(id);
+ savePlayers();
+ localStorage.setItem("mahjong_v6_selected_members",JSON.stringify(selectedMembers));
+ renderMemberList();
+ if(started){
+   sessionLabel.textContent=`対局日：${sessionDate}｜参加 ${selectedMembers.length}人`;
+   renderTables();renderSelect();renderHand();
+   alert(`${clean}さんをメンバーに追加しました。\n「卓・メンバー」の席を選んで入れ替えてください。`);
+ }
+}
+function setupError(s){setupErrorEl.innerHTML=s?`<div class="error">${s}</div>`:""}
+const setupErrorEl=document.getElementById("setupError");
+
+function startSession(){
+ readSelectedMembers();
+ sessionDate=sessionDateInput.value;
+ if(!sessionDate){setupError("対局日を入力してください。");return}
+ if(selectedMembers.length<3){setupError("3人以上を選択してください。");return}
+ localStorage.setItem("mahjong_v5_session_date",sessionDate);
+ localStorage.setItem("mahjong_v6_selected_members",JSON.stringify(selectedMembers));
+ // Keep current seat assignments when possible, otherwise fill selected members.
+ const pool=[...selectedMembers];
+ tables=tables.map((t,ti)=>{
+   const n=t.mode===4?4:3;
+   const current=t.players.slice(0,n).filter(id=>selectedMembers.includes(id));
+   const out=[...current];
+   pool.forEach(id=>{if(out.length<n && !out.includes(id))out.push(id)});
+   // If an existing player is not selected, fill from selected pool.
+   while(out.length<n){
+     const id=selectedMembers.find(x=>!out.includes(x));
+     if(id==null)break;
+     out.push(id);
+   }
+   return {...t,players:out};
+ });
+ // Remove duplicates across tables by rebuilding seats from selection.
+ const used=new Set(),remaining=[...selectedMembers];
+ tables=tables.map(t=>{
+   const n=t.mode===4?4:3;
+   let out=[];
+   t.players.slice(0,n).forEach(id=>{if(selectedMembers.includes(id)&&!used.has(id)){out.push(id);used.add(id)}});
+   while(out.length<n){
+     const id=remaining.find(x=>!used.has(x));
+     if(id==null)break;
+     out.push(id);used.add(id);
+   }
+   return {...t,players:out};
+ });
+ saveTables();
+ started=true;
+ setupPage.style.display="none";appPage.style.display="block";
+ sessionLabel.textContent=`対局日：${sessionDate}｜参加 ${selectedMembers.length}人`;
+ renderTables();renderSelect();renderHand();showPage("hand");
+}
+function saveTables(){
+ localStorage.setItem("mahjong_v3_tables",JSON.stringify(tables));
+}
+function backToSetup(){
+ started=false;appPage.style.display="none";setupPage.style.display="block";
+ renderMemberList();
+}
+function renderTables(){
+ tableArea.innerHTML=tables.map((t,ti)=>{
+   const n=t.mode===4?4:3;
+   return `<div class="tablecard">
+     <h3>${t.name} <span class="badge">${t.mode}麻</span></h3>
+     <div class="seatgrid">
+       ${Array.from({length:n},(_,i)=>`<div><label>席${i+1}</label>
+       <select id="seat-${ti}-${i}" onchange="swapSeat(${ti},${i},this.value)">
+       ${selectedMembers.map(id=>`<option value="${id}" ${t.players[i]===id?"selected":""}>${P(id)?.name||"未設定"}</option>`).join("")}
+       </select></div>`).join("")}
+     </div>
+   </div>`;
+ }).join("");
+}
+function swapSeat(ti,seat,val){
+ const id=Number(val),t=tables[ti],n=t.mode===4?4:3;
+ if(!selectedMembers.includes(id))return renderTables();
+ const other=tables.findIndex((x,idx)=>idx!==ti&&x.players.includes(id));
+ if(other>=0){
+   const oi=tables[other].players.indexOf(id);
+   const old=t.players[seat];
+   t.players[seat]=id;
+   if(oi>=0&&old!=null)t.tables;
+   tables[other].players[oi]=old;
+ }else{
+   t.players[seat]=id;
+ }
+ // Prevent duplicate within same table by swapping with the seat containing the chosen id.
+ const dup=t.players.findIndex((x,i)=>x===id&&i!==seat);
+ if(dup>=0){
+   const tmp=t.players[dup];t.players[dup]=t.players[seat];t.players[seat]=tmp;
+ }
+ saveTables();renderTables();renderSelect();renderHand();
+}
+function renderSelect(){
+ tableSelect.innerHTML=tables.map((t,i)=>`<option value="${i}">${t.name}（${t.mode}麻）</option>`).join("");
+}
+function renderHand(){
+ pending=null;calcButton.disabled=false;
+ const t=tables[Number(tableSelect.value||0)],n=t.mode===4?4:3;
+ tableInfo.textContent=`${t.name}｜${t.mode}麻｜${n}人`;
+ const defaults=t.mode===4?[38000,27000,25000,10000]:[40000,40000,40000];
+ inputs.innerHTML=t.players.slice(0,n).map((id,i)=>`
+ <div class="scoreRow">
+  <b>${P(id)?.name||"未設定"}</b>
+  <input id="s${i}" type="text" inputmode="text" value="${defaults[i]}" placeholder="点数" autocomplete="off">
+  <input id="c${i}" type="text" inputmode="text" value="0" placeholder="チップ" autocomplete="off">
+ </div>`).join("");
+ inputs.innerHTML=`<div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px"><b>プレイヤー</b><b>最終点</b><b>チップ</b></div>`+inputs.innerHTML;
+ inputs.innerHTML+=`<div style="margin-top:10px"><label class="muted">飛ばした人（トビがある場合のみ）</label>
+ <select id="tobiFrom"><option value="">なし</option>${t.players.slice(0,n).map(id=>`<option value="${id}">${P(id)?.name||"未設定"}</option>`).join("")}</select></div>`;
+ error.innerHTML="";result.innerHTML="";
+}
+function calc(){
+ sessionDate=sessionDateInput.value;
+ if(!sessionDate){error.innerHTML='<div class="error">⚠ 対局日を入力してください。</div>';return}
+ if(pending){error.innerHTML='<div class="error">⚠ すでに計算済みです。内容を確認して確定してください。</div>';return}
+ const t=tables[Number(tableSelect.value||0)],n=t.mode===4?4:3;
+ const ret=t.mode===4?30000:40000,uma=t.mode===4?[30,0,-10,-20]:[20,0,-20],need=t.mode===4?100000:120000;
+ let raw=[],chips=[];
+ for(let i=0;i<n;i++){raw.push(signed(document.getElementById("s"+i).value));chips.push(signed(document.getElementById("c"+i).value))}
+ if(raw.some(x=>!Number.isFinite(x))){error.innerHTML='<div class="error">⚠ 点数を正しく入力してください。</div>';return}
+ if(chips.some(x=>!Number.isFinite(x))){error.innerHTML='<div class="error">⚠ チップは -2 / +2 のように入力してください。</div>';return}
+ const scoreSum=raw.reduce((a,b)=>a+b,0),chipSum=chips.reduce((a,b)=>a+b,0);
+ if(scoreSum!==need){error.innerHTML=`<div class="error">⚠ 点数合計が合いません<br>現在：${scoreSum.toLocaleString()}点 ／ 正しい合計：${need.toLocaleString()}点</div>`;return}
+ if(chipSum!==0){error.innerHTML=`<div class="error">⚠ チップ合計が合いません<br>現在：${chipSum>0?"+":""}${chipSum}枚 ／ 正しい合計：0枚</div>`;return}
+ const p=raw.map(x=>Math.ceil(x/1000)*1000);
+ const ord=[...Array(n).keys()].sort((a,b)=>p[b]-p[a]),pts=Array(n).fill(0);
+ for(let r=n-1;r>=1;r--){const i=ord[r];pts[i]=(p[i]-ret)/1000+uma[r]}
+ pts[ord[0]]=-(pts.reduce((a,b)=>a+b,0));
+ const tobiIndex=raw.findIndex(x=>x<0);
+ const tobiFromId=String(document.getElementById("tobiFrom").value||"");
+ const tobiFromIndex=tobiFromId?t.players.findIndex(id=>String(id)===tobiFromId):-1;
+ if(tobiIndex>=0){
+   if(tobiFromIndex<0){error.innerHTML='<div class="error">⚠ トビがあるため、「飛ばした人」を選択してください。</div>';return}
+   if(tobiFromIndex===tobiIndex){error.innerHTML='<div class="error">⚠ 飛ばした人とトビの人は別にしてください。</div>';return}
+   pts[tobiFromIndex]+=10;pts[tobiIndex]-=10;
+ }else if(tobiFromIndex>=0){error.innerHTML='<div class="error">⚠ トビがない場合は「飛ばした人」を「なし」にしてください。</div>';return}
+ const rows=ord.map((i,r)=>({id:t.players[i],name:P(t.players[i])?.name||"未設定",rank:r+1,raw:raw[i],calc:p[i],pt:pts[i],chip:chips[i],tobi:i===tobiIndex,tobiFrom:i===tobiFromIndex,yen:pts[i]*50+chips[i]*250}));
+ pending={rows,tableName:t.name,mode:t.mode};
+ renderPending();error.innerHTML="";
+}
+function renderPending(){
+ const rows=pending.rows,me=rows.find(x=>x.id===1);
+ let html=`<div class="card result"><div class="big">今回の結果（未確定）</div>
+ <div class="warning">⚠ まだ累計には加算していません。内容を確認してから確定してください。</div>
+ <table><tr><th>順位</th><th>名前</th><th>ポイント</th><th>チップ</th><th>収支</th></tr>`;
+ rows.forEach(x=>html+=`<tr><td>${x.rank}着</td><td>${x.name}${x.tobi?' <b>🛫トビ</b>':''}${x.tobiFrom?' <b>✈️飛ばし</b>':''}<div class="calcscore">${x.raw.toLocaleString()} → ${x.calc.toLocaleString()}点</div></td>
+ <td class="${x.pt>=0?"plus":"minus"}">${x.pt>=0?"+":""}${x.pt}</td><td class="${x.chip>=0?"plus":"minus"}">${x.chip>=0?"+":""}${x.chip}</td>
+ <td class="${x.yen>=0?"plus":"minus"}">${x.yen>=0?"+":""}${x.yen.toLocaleString()}円</td></tr>`);
+ html+=`</table>${me?`<p><b>自分の今回：</b> <span class="${me.yen>=0?"plus":"minus"}">${me.yen>=0?"+":""}${me.yen.toLocaleString()}円</span></p>`:""}
+ <div class="actions"><button class="confirm" onclick="confirmHand()">✓ この局を確定して累計に追加</button><button class="light" onclick="cancelPending()">修正する</button></div></div>`;
+ result.innerHTML=html;calcButton.disabled=true;
+}
+function confirmHand(){
+ if(!pending)return;
+ history.push({id:Date.now(),date:sessionDate,time:new Date().toLocaleString("ja-JP"),tableName:pending.tableName,mode:pending.mode,rows:clone(pending.rows)});
+ localStorage.setItem("mahjong_v5_history",JSON.stringify(history));
+ ensureTotals();
+ const me=pending.rows.find(x=>x.id===1),mt=totals.find(x=>x.id===1)||{points:0,chips:0};
+ result.innerHTML=`<div class="card result"><div class="big">✓ この局を確定しました</div><div class="ok">累計への加算が完了しました。</div>
+ ${me?`<p><b>自分の今回：</b> <span class="${me.yen>=0?"plus":"minus"}">${me.yen>=0?"+":""}${me.yen.toLocaleString()}円</span></p>
+ <p><b>自分の累計：</b> <span class="${Y(mt)>=0?"plus":"minus"}">${Y(mt)>=0?"+":""}${Y(mt).toLocaleString()}円</span></p>`:""}</div>`;
+ pending=null;calcButton.disabled=false;
+}
+function cancelPending(){pending=null;result.innerHTML="";error.innerHTML='<div class="ok">修正できます。入力を直して、もう一度「計算する」を押してください。</div>';calcButton.disabled=false}
+function renderDailyTotals(){
+ const d=sessionDateInput.value||sessionDate;
+ dailyDateLabel.textContent=`対局日：${d}`;
+ const daily={};players.forEach(p=>daily[p.id]={id:p.id,points:0,chips:0,hands:0});
+ history.filter(h=>(h.date||"")===d).forEach(h=>h.rows.forEach(x=>{if(!daily[x.id])daily[x.id]={id:x.id,points:0,chips:0,hands:0};daily[x.id].points+=x.pt||0;daily[x.id].chips+=x.chip||0;daily[x.id].hands++}));
+ dailyTotals.innerHTML=players.map(p=>{const t=daily[p.id],y=Y(t);return `<div class="totalrow"><b>${p.name}</b><span class="${t.points>=0?"plus":"minus"}">${t.points>=0?"+":""}${t.points}</span><span>${t.chips>=0?"+":""}${t.chips}</span><span class="${y>=0?"plus":"minus"}">${y>=0?"+":""}${y.toLocaleString()}円</span></div>`}).join("");
+}
+function renderTotals(){
+ ensureTotals();
+ totalsDiv.innerHTML=players.map(p=>{const t=totals.find(x=>x.id===p.id)||{points:0,chips:0},y=Y(t);return `<div class="totalrow"><b>${p.name}</b><span class="${t.points>=0?"plus":"minus"}">${t.points>=0?"+":""}${t.points}</span><span>${t.chips>=0?"+":""}${t.chips}</span><span class="${y>=0?"plus":"minus"}">${y>=0?"+":""}${y.toLocaleString()}円</span></div>`}).join("");
+}
+function renderHistory(){
+ if(!history.length){
+   historyDateSelect.innerHTML='<option value="">履歴なし</option>';
+   historyDiv.innerHTML='<div class="muted">まだ確定した局がありません。</div>';
+   return;
+ }
+ const dates=[...new Set(history.map(h=>h.date||"日付未設定"))].sort().reverse();
+ const current=historyDateSelect.value;
+ historyDateSelect.innerHTML=dates.map(d=>`<option value="${d}" ${d===current?"selected":""}>${d}</option>`).join("");
+ const selected=dates.includes(current)?current:dates[0];
+ historyDateSelect.value=selected;
+
+ const hs=history.filter(h=>(h.date||"日付未設定")===selected);
+ const tableGroups={};
+ hs.forEach(h=>{
+   const key=`${h.tableName}｜${h.mode}麻`;
+   if(!tableGroups[key])tableGroups[key]=[];
+   tableGroups[key].push(h);
+ });
+
+ historyDiv.innerHTML=Object.entries(tableGroups).map(([key,arr])=>{
+   // この卓で、その日に実際に打ったメンバーだけを横方向の列にする
+   const memberIds=[];
+   arr.forEach(h=>h.rows.forEach(x=>{
+     if(!memberIds.includes(x.id))memberIds.push(x.id);
+   }));
+   const members=memberIds.map(id=>{
+     const p=players.find(p=>p.id===id);
+     return p||{id,name:"不明"};
+   });
+
+   // 各メンバーの卓内累計
+   const day={};
+   arr.forEach(h=>h.rows.forEach(x=>{
+     if(!day[x.id])day[x.id]={id:x.id,points:0,chips:0,hands:0,yen:0};
+     day[x.id].points+=x.pt||0;
+     day[x.id].chips+=x.chip||0;
+     day[x.id].yen+=x.yen||0;
+     day[x.id].hands++;
+   }));
+
+   const header=members.map(p=>`<th>${p.name}</th>`).join("");
+   const handRows=arr.map((h,idx)=>{
+     const byId={};
+     h.rows.forEach(x=>byId[x.id]=x);
+     return `<tr><th class="historyRound">${idx+1}局目</th>${members.map(p=>{
+       const x=byId[p.id];
+       if(!x)return `<td class="historyEmpty">—</td>`;
+       return `<td><div><b>${x.rank}着</b> <span class="${x.pt>=0?'plus':'minus'}">${x.pt>=0?'+':''}${x.pt}</span>${x.tobi?' <span class="tobiMark">トビ</span>':''}${x.tobiFrom?' <span class="tobiMark">飛ばし</span>':''}</div><div class="historySub">チップ ${x.chip>=0?'+':''}${x.chip} ／ ${x.yen>=0?'+':''}${x.yen.toLocaleString()}円</div></td>`;
+     }).join("")}</tr>`;
+   }).join("");
+
+   const totalRows=`
+     <tr class="historyTotalLine"><th class="historyRound">合計</th>${members.map(p=>{
+       const t=day[p.id]||{points:0,chips:0,yen:0};
+       return `<td><b class="${t.points>=0?'plus':'minus'}">${t.points>=0?'+':''}${t.points}</b><div class="historySub">チップ ${t.chips>=0?'+':''}${t.chips} ／ ${t.yen>=0?'+':''}${t.yen.toLocaleString()}円</div></td>`;
+     }).join("")}</tr>`;
+
+   return `<div class="card"><div class="groupTitle">🀄 ${key}</div>
+     <div class="historyScroll"><table class="historyMatrix"><tr><th></th>${header}</tr>${handRows}${totalRows}</table></div>
+     <div class="muted" style="margin-top:8px">各局の「修正」は局の右側から行えます。</div>
+     <div class="historyEditList">${arr.map((h,idx)=>`<button class="light smallbtn" onclick="editHistory(${h.id})">${idx+1}局目を修正</button>`).join(" ")}</div>
+   </div>`;
+ }).join("");
+}
+
+async function editHistory(id){
+ const h=history.find(x=>x.id===id);if(!h)return;
+ if(!confirm("この局を修正します。現在の記録を削除して、同じ局をもう一度入力できる状態にします。よろしいですか？"))return;
+ history=history.filter(x=>x.id!==id);
+ localStorage.setItem("mahjong_v5_history",JSON.stringify(history));
+ ensureTotals();
+ sessionDate=h.date||sessionDate;
+ sessionDateInput.value=sessionDate;
+ const ti=tables.findIndex(t=>t.name===h.tableName&&t.mode===h.mode);
+ if(ti>=0)tableSelect.value=String(ti);
+ renderHand();
+ const t=ti>=0?tables[ti]:null;
+ if(t){
+   h.rows.forEach((x,i)=>{
+     const seat=t.players.findIndex(id=>id===x.id);
+     if(seat>=0){
+       const s=document.getElementById("s"+seat),c=document.getElementById("c"+seat);
+       if(s)s.value=x.raw;
+       if(c)c.value=x.chip;
+     }
+   });
+   const tf=h.rows.find(x=>x.tobiFrom);
+   const ts=document.getElementById("tobiFrom");if(ts&&tf)ts.value=String(tf.id);
+ }
+ showPage("hand");
+ error.innerHTML='<div class="ok">修正モードです。内容を直して「計算する」→「確定」してください。</div>';
+}
+async function resetHistory(){if(!confirm("局履歴をリセットしますか？"))return;if(roomCode)await set(roomRef("history"),{});history=[];localStorage.setItem("mahjong_v5_history","[]");ensureTotals();renderHistory();renderDailyTotals()}
+function resetTotals(){if(confirm("トータル累計をリセットしますか？（局履歴から再計算されるため、履歴を残している限り元に戻ります）")){localStorage.setItem("mahjong_v4_totals","[]");ensureTotals();renderTotals()}}
+const sessionDateInput=document.getElementById("sessionDate");
+const memberList=document.getElementById("memberList");
+const tableArea=document.getElementById("tableArea");
+const tableSelect=document.getElementById("tableSelect");
+const tableInfo=document.getElementById("tableInfo");
+const inputs=document.getElementById("inputs");
+const error=document.getElementById("error");
+const result=document.getElementById("result");
+const dailyTotals=document.getElementById("dailyTotals");
+const totalsDiv=document.getElementById("totals");
+const dailyDateLabel=document.getElementById("dailyDateLabel");
+const historyDiv=document.getElementById("history");
+const historyDateSelect=document.getElementById("historyDateSelect");
+const calcButton=document.getElementById("calcButton");
+const setupPage=document.getElementById("setupPage");
+const appPage=document.getElementById("appPage");
+const sessionLabel=document.getElementById("sessionLabel");
+sessionDateInput.value=sessionDate;
+sessionDateInput.addEventListener("change",()=>{sessionDate=sessionDateInput.value;localStorage.setItem("mahjong_v5_session_date",sessionDate);saveSessionDateCloud();if(started)sessionLabel.textContent=`対局日：${sessionDate}｜参加 ${selectedMembers.length}人`;});
+renderMemberList();
+ensureTotals();
+renderHistory();
+// Functions used by inline HTML handlers must be exposed on window because this is an ES module.
+Object.assign(window,{startSession,selectAllMembers,clearMembers,addMember,backToSetup,showPage,swapSeat,renderHand,calc,confirmHand,cancelPending,resetHistory,resetTotals,editHistory});
+</script>
+</body>
+</html>
