@@ -848,7 +848,7 @@ async function savePastGame(){
  const need=mode===4?4:3;
  if(ids.length!==need){err.innerHTML=`<div class="error">${mode}麻は${need}人を選択してください。</div>`;return;}
  const rows=[];let ps=0,cs=0;
- ids.forEach(id=>{const p=P(id);const pt=Number(document.querySelector(`.pastPt[data-id="${id}"]`)?.value);const chip=Number(document.querySelector(`.pastChip[data-id="${id}"]`)?.value||0);if(!Number.isFinite(pt)||!Number.isFinite(chip))return;ps+=pt;cs+=chip;rows.push({id,name:p?p.name:"不明",raw:pt,calc:pt,pt,chip,yen:Y({points:pt,chips:chip}),rank:0,tobi:isTobiByPastPoint(mode,pt),tobiFrom:false});});
+ ids.forEach(id=>{const p=P(id);const ptInput=document.querySelector(`.pastPt[data-id="${id}"]`);const ptText=ptInput?.value;if(ptText==null||ptText.trim()==="")return;const pt=Number(ptText);const chip=Number(document.querySelector(`.pastChip[data-id="${id}"]`)?.value||0);if(!Number.isFinite(pt)||!Number.isFinite(chip))return;ps+=pt;cs+=chip;rows.push({id,name:p?p.name:"不明",raw:pt,calc:pt,pt,chip,yen:Y({points:pt,chips:chip}),rank:0,tobi:isTobiByPastPoint(mode,pt),tobiFrom:false});});
  if(rows.length!==ids.length){err.innerHTML='<div class="error">ポイントを全員分入力してください。</div>';return;}
  if(ps!==0){err.innerHTML=`<div class="error">ポイント合計が${ps>=0?"+":""}${ps}です。0になるようにしてください。</div>`;return;}
  if(cs!==0){err.innerHTML=`<div class="error">チップ合計が${cs>=0?"+":""}${cs}です。0になるようにしてください。</div>`;return;}
