@@ -311,7 +311,11 @@ let history=load("mahjong_v5_history",[]);
 let totals=[];
 let pending=null;
 let editingHistoryId=null;
-let sessionDate=localStorage.getItem("mahjong_v5_session_date")||new Date().toISOString().slice(0,10);
+function localDateString(d=new Date()){
+ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+ return `${y}-${m}-${day}`;
+}
+let sessionDate=localStorage.getItem("mahjong_v5_session_date")||localDateString();
 let selectedMembers=load("mahjong_v6_selected_members",players.map(p=>p.id));
 let started=false;
 
